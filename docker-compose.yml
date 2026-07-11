@@ -1,0 +1,52 @@
+
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: amrutam_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: amrutam_user
+      POSTGRES_PASSWORD: amrutam_pass
+      POSTGRES_DB: amrutam
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: amrutam_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: amrutam_jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: amrutam_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://amrutam_user:amrutam_pass@postgres:5432/amrutam
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY: 15m
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      OTEL_EXPORTER_URL: http://jaeger:4318/v1/traces
+      NODE_ENV: production
+    depends_on:
+      - postgres
+      - redis
+      - jaeger
+volumes:
+  pgdata:
