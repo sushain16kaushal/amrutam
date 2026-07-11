@@ -102,4 +102,21 @@ introduced — reads (availability search, analytics) routed to a replica, write
 primary. Since all DB access already goes through a repository layer, this can be added later
 without touching business logic.
 
+## 7. Backup & Disaster Recovery Strategy
+
+### Backup
+- **PostgreSQL**: Daily automated full backups (`pg_dump` or managed-provider snapshots, e.g. RDS/Cloud SQL automated backups) retained for 30 days. Write-Ahead Log (WAL) archiving enabled for point-in-time recovery (PITR) between daily snapshots — critical here since consultation/prescription data cannot tolerate a full day of loss.
+- **Redis**: Treated as ephemeral (locks, cache, rate-limit counters) — not backed up. If Redis is lost, locks simply reset (no double-booking risk survives a restart since bookings already committed to Postgres remain the source of truth) and caches repopulate on next read.
+
+### Recovery Objectives
+- **RPO (Recovery Point Objective)**: ≤5 minutes, via continuous WAL shipping to a backup location.
+- **RTO (Recovery Time Objective)**: ≤1 hour for a full restore from the latest snapshot + WAL replay.
+
+### Disaster Recovery Approach
+- **Single-region failure**: Restore from the latest snapshot + WAL to a standby instance in the same region.
+- **Region-wide outage**: Cross-region backup replication (e.g. S3 cross-region replication for snapshot storage) allows restoring in a secondary region; DNS/load balancer failover redirects traffic once the secondary is confirmed healthy.
+- **Data corruption (not infra failure)**: PITR allows restoring to a specific timestamp before the corrupting event, using WAL replay rather than only the last full snapshot.
+
+### Testing
+- Backup restore should be tested quarterly in a non-production environment to confirm backups are actually restorable (an untested backup is not a real backup) — not yet automated in this project's timeline, flagged as a production readiness item.
 

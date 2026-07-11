@@ -10,6 +10,18 @@ surface in this system and the concrete mitigation implemented.
 - **Admin-only endpoints**: analytics, audit log access
 - **Sensitive data**: passwords, MFA secrets, prescription details, payment amounts
 
+## Data Classification
+
+| Data | Sensitivity | Examples | Handling |
+|---|---|---|---|
+| **Highly Sensitive (PHI — Protected Health Information)** | Critical | Prescription details, consultation notes, medical history implied by specialty bookings | Access restricted to patient + assigned doctor only (ownership checks); included in audit trail; should be encrypted at rest in production (currently relies on DB-level encryption, not yet column-level) |
+| **Sensitive (Authentication/Financial)** | Critical | Password hashes, MFA secrets, payment amounts | Passwords bcrypt-hashed (never reversible); MFA secrets encrypted at rest (AES-256-GCM); payment amounts stored but no card/bank details are ever stored (mock payment gateway) |
+| **Personally Identifiable Information (PII)** | High | Email, full name, phone number | Accessible to the user themselves and relevant counterpart (doctor sees patient name for their own consultations only); not exposed in public search results beyond doctor's own public profile |
+| **Internal/Operational** | Medium | Audit logs, analytics aggregates | Admin-only access; individual audit entries reference PII (actor_id) so inherit PII-level access control despite being "operational" data |
+| **Public** | Low | Doctor specialty, verified status, availability slots (without patient info attached) | No restrictions — intentionally public so patients can search |
+
+This classification drives the access-control decisions throughout the system (e.g. why prescriptions require ownership checks but doctor search does not).
+
 ## S — Spoofing (pretending to be someone else)
 
 | Threat | Mitigation |

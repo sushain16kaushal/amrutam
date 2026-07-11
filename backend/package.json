@@ -8,6 +8,7 @@
     "@opentelemetry/sdk-node": "^0.220.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.80.2",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",

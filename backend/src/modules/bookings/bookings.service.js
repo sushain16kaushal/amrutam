@@ -5,6 +5,8 @@ import { ApiError } from '../../utils/apiError.js';
 import { logAction } from '../../utils/auditLogger.js';
 import { env } from '../../config/env.js';
 import { bookingsCreatedTotal, bookingsFailedTotal, slotLockContentionTotal } from '../../utils/metrics.js';
+import { queueBookingConfirmation } from '../../jobs/notification.queue.js';
+import { findUserById } from '../auth/auth.repository.js';
 const CONSULTATION_FEE = 500; // flat fee — real pricing logic scope se bahar hai
 
 // Mock payment gateway — real provider hit nahi karta.
@@ -55,6 +57,10 @@ export const bookSlot = async (patientId, { slotId, simulateFailure = false }) =
     const confirmed = await bookingsRepo.updateConsultationStatus(client, consultation.id, 'confirmed');
   await logAction({ actorId: patientId, action: 'booking_created', metadata: { consultationId: confirmed.id, slotId } }, client);
     await client.query('COMMIT');
+    const patient = await findUserById(patientId); // email chahiye notification ke liye
+await queueBookingConfirmation(patient.email, confirmed.id).catch((err) =>
+  logger.error({ err }, 'Failed to queue booking confirmation — booking itself succeeded')
+);
     return confirmed;
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {}); // dobara ROLLBACK harmless hai agar transaction already band ho chuki
