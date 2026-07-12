@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Amrutam Backend — Demo Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e6e8eb;
+    --muted: #8b93a1;
+    --accent: #3ba776;
+    --accent2: #4d8dff;
+    --danger: #e0554f;
+    --warn: #d9a441;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    height: 100vh;
+  }
+  .sidebar {
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #1f2430;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { background: #262c3a; border-color: var(--accent2); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #06120b; font-weight: 600; }
+  button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .state-row { font-size: 11px; color: var(--muted); margin-bottom: 3px; word-break: break-all; }
+  .state-row b { color: var(--text); }
+  .main {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .log-header h2 { font-size: 14px; margin: 0; }
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12.5px;
+  }
+  .entry { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .entry:last-child { border-bottom: none; }
+  .entry-title { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .method { font-weight: 700; color: var(--accent2); }
+  .status { font-weight: 700; padding: 1px 7px; border-radius: 4px; font-size: 11px; }
+  .status.ok { background: rgba(59,167,118,0.18); color: var(--accent); }
+  .status.err { background: rgba(224,85,79,0.18); color: var(--danger); }
+  .status.warn { background: rgba(217,164,65,0.18); color: var(--warn); }
+  .label { color: var(--muted); }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-word; color: #c9cdd4; }
+  .clear-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  a.linkbtn { color: var(--accent2); text-decoration: none; font-size: 13px; display: inline-block; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h1>Amrutam Backend</h1>
+  <div class="sub">Demo dashboard — no build step, just open this file</div>
+
+  <div class="panel">
+    <h2>0. Setup</h2>
+    <button class="primary" onclick="runSetup()">Run full demo setup</button>
+    <div id="stateBox" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>1. Idempotency</h2>
+    <button onclick="bookSlot1()">Book Slot 1 (patient 1)</button>
+    <button onclick="retryBookSlot1()">Retry SAME request (same key)</button>
+  </div>
+
+  <div class="panel">
+    <h2>2. Concurrency</h2>
+    <button onclick="concurrencyTest()">Patient 2 books Slot 1 (expect 409)</button>
+  </div>
+
+  <div class="panel">
+    <h2>3. Saga Rollback</h2>
+    <button onclick="bookSlot2Fail()">Book Slot 2 with simulated payment failure</button>
+    <button onclick="checkSlot2()">Check Slot 2 availability (expect open)</button>
+  </div>
+
+  <div class="panel">
+    <h2>4. Security</h2>
+    <button onclick="weakPassword()">Register with weak password (expect 400)</button>
+    <button class="danger" onclick="rateLimitTest()">Send 12 rapid logins (expect 429)</button>
+  </div>
+
+  <div class="panel">
+    <h2>5. Search &amp; Analytics</h2>
+    <button onclick="fuzzySearch()">Search doctors: "Shrama" (typo)</button>
+    <button onclick="analyticsOverview()">Admin: analytics overview</button>
+  </div>
+
+  <div class="panel">
+    <h2>6. Observability</h2>
+    <a class="linkbtn" href="http://localhost:16686" target="_blank">Open Jaeger UI &rarr;</a><br>
+    <a class="linkbtn" href="http://localhost:5000/metrics" target="_blank">Open /metrics &rarr;</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="log-header">
+    <h2>Response Log</h2>
+    <button class="clear-btn" onclick="document.getElementById('log').innerHTML=''">Clear</button>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script>
+const BASE = 'http://localhost:5000/api';
+let state = {}; // holds tokens/ids created during setup
+
+function renderState() {
+  const box = document.getElementById('stateBox');
+  if (!Object.keys(state).length) { box.innerHTML = '<div class="state-row">Not set up yet.</div>'; return; }
+  box.innerHTML = Object.entries(state).map(([k,v]) =>
+    `<div class="state-row"><b>${k}</b>: ${String(v).slice(0,28)}${String(v).length>28?'…':''}</div>`
+  ).join('');
+}
+renderState();
+
+function logEntry(title, method, status, body) {
+  const log = document.getElementById('log');
+  const ok = status >= 200 && status < 300;
+  const cls = ok ? 'ok' : (status === 429 || status === 409 || status === 402 || status === 400 ? 'warn' : 'err');
+  const div = document.createElement('div');
+  div.className = 'entry';
+  div.innerHTML = `
+    <div class="entry-title">
+      <span class="method">${method}</span>
+      <span class="status ${cls}">${status}</span>
+      <span class="label">${title}</span>
+    </div>
+    <pre>${JSON.stringify(body, null, 2)}</pre>`;
+  log.prepend(div);
+}
+
+async function call(title, method, path, { token, body, idemKey } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (idemKey) headers['Idempotency-Key'] = idemKey;
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(() => ({}));
+    logEntry(title, method, res.status, data);
+    return { status: res.status, data };
+  } catch (err) {
+    logEntry(title + ' — NETWORK ERROR (is CORS enabled? is server running?)', method, 0, { error: err.message });
+    return { status: 0, data: null };
+  }
+}
+
+const registerAndLogin = async (role, tag) => {
+  const email = `demo_${tag}_${Date.now()}_${Math.random().toString(36).slice(2,6)}@amrutam.com`;
+  await call(`Register ${tag}`, 'POST', '/auth/register', { body: { email, password: 'Test@1234', role } });
+  const { data } = await call(`Login ${tag}`, 'POST', '/auth/login', { body: { email, password: 'Test@1234' } });
+  return data.data.accessToken;
+};
+
+async function runSetup() {
+  state = {};
+  const doctorToken = await registerAndLogin('doctor', 'doctor');
+  const { data: doctorReg } = await call('Doctor registers profile', 'POST', '/doctors/register', { token: doctorToken, body: { specialty: 'Cardiology' } });
+
+  const start1 = new Date(Date.now() + 24*60*60*1000);
+  const end1 = new Date(start1.getTime() + 30*60*1000);
+  const { data: slot1 } = await call('Add slot 1', 'POST', '/doctors/availability', { token: doctorToken, body: { startTime: start1.toISOString(), endTime: end1.toISOString() } });
+
+  const start2 = new Date(Date.now() + 48*60*60*1000);
+  const end2 = new Date(start2.getTime() + 30*60*1000);
+  const { data: slot2 } = await call('Add slot 2', 'POST', '/doctors/availability', { token: doctorToken, body: { startTime: start2.toISOString(), endTime: end2.toISOString() } });
+
+  const patient1Token = await registerAndLogin('patient', 'patient1');
+  const patient2Token = await registerAndLogin('patient', 'patient2');
+  const adminToken = await registerAndLogin('admin', 'admin');
+
+  state = {
+    doctorId: doctorReg.data.id,
+    slot1Id: slot1.data.id,
+    slot2Id: slot2.data.id,
+    patient1Token,
+    patient2Token,
+    adminToken
+  };
+  renderState();
+}
+
+function requireSetup() {
+  if (!state.slot1Id) { alert('Click "Run full demo setup" first.'); return false; }
+  return true;
+}
+
+async function bookSlot1() {
+  if (!requireSetup()) return;
+  await call('Book Slot 1 (patient 1)', 'POST', '/bookings', {
+    token: state.patient1Token, idemKey: 'demo-key-slot1', body: { slotId: state.slot1Id }
+  });
+}
+
+async function retryBookSlot1() {
+  if (!requireSetup()) return;
+  await call('RETRY same booking (same Idempotency-Key)', 'POST', '/bookings', {
+    token: state.patient1Token, idemKey: 'demo-key-slot1', body: { slotId: state.slot1Id }
+  });
+}
+
+async function concurrencyTest() {
+  if (!requireSetup()) return;
+  await call('Patient 2 books ALREADY-BOOKED Slot 1', 'POST', '/bookings', {
+    token: state.patient2Token, idemKey: 'demo-key-concurrency-' + Date.now(), body: { slotId: state.slot1Id }
+  });
+}
+
+async function bookSlot2Fail() {
+  if (!requireSetup()) return;
+  await call('Book Slot 2 with simulateFailure:true', 'POST', '/bookings', {
+    token: state.patient1Token, idemKey: 'demo-key-fail-' + Date.now(),
+    body: { slotId: state.slot2Id, simulateFailure: true }
+  });
+}
+
+async function checkSlot2() {
+  if (!requireSetup()) return;
+  const { data } = await call('GET doctor availability', 'GET', `/doctors/${state.doctorId}/availability`, {});
+  const slot = (data.data || []).find(s => s.id === state.slot2Id);
+  logEntry('Slot 2 current status', 'CHECK', slot?.status === 'open' ? 200 : 409, slot || { note: 'not found in open list' });
+}
+
+async function weakPassword() {
+  await call('Register weak password', 'POST', '/auth/register', {
+    body: { email: `weak_${Date.now()}@amrutam.com`, password: 'weak', role: 'patient' }
+  });
+}
+
+async function rateLimitTest() {
+  const email = `ratelimit_${Date.now()}@amrutam.com`;
+  await call('Register rate-limit test user', 'POST', '/auth/register', { body: { email, password: 'Test@1234', role: 'patient' } });
+  for (let i = 1; i <= 12; i++) {
+    await call(`Login attempt #${i}`, 'POST', '/auth/login', { body: { email, password: 'WrongPassword' } });
+  }
+}
+
+async function fuzzySearch() {
+  await call('Search doctors name=Shrama (typo)', 'GET', '/doctors/search?name=Shrama', {});
+}
+
+async function analyticsOverview() {
+  if (!requireSetup()) return;
+  await call('Admin analytics overview', 'GET', '/analytics/overview', { token: state.adminToken });
+}
+</script>
+</body>
+</html>

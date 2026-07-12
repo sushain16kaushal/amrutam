@@ -1,4 +1,5 @@
 import helmet from 'helmet';
+import cors from 'cors';
 import express from 'express';
 import authRoutes from './modules/auth/auth.routes.js';
 import { errorHandler } from './middlewares/errorHandler.middleware.js';
@@ -16,6 +17,7 @@ import { requestId } from './middlewares/requestId.middleware.js';
 import register, { httpRequestDuration } from './utils/metrics.js';
 const app = express();
 app.use(helmet()); 
+app.use(cors()); 
 app.use(requestId); // pehle req.id set karo
 app.use(pinoHttp({
   logger,
