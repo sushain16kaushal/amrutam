@@ -19,7 +19,7 @@ const mockChargePayment = async (amount, forceFail = false) => {
 };
 
 export const bookSlot = async (patientId, { slotId, simulateFailure = false }) => {
-   const forceFail = env.nodeEnv !== 'production' && simulateFailure; // NEW
+   const forceFail = env.allowPaymentSimulation && simulateFailure; // NEW
   const lockToken = await acquireLock(`slot:${slotId}`);
   if (!lockToken) {
      slotLockContentionTotal.inc(); // NEW

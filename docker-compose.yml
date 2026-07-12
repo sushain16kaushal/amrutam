@@ -43,7 +43,7 @@ services:
       JWT_EXPIRY: 15m
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       OTEL_EXPORTER_URL: http://jaeger:4318/v1/traces
-      NODE_ENV: production
+      NODE_ENV: production 
     depends_on:
       - postgres
       - redis

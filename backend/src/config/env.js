@@ -9,5 +9,6 @@ export const env = {
   jwtExpiry: process.env.JWT_EXPIRY || '15m',
   encryptionKey: process.env.ENCRYPTION_KEY,
   nodeEnv: process.env.NODE_ENV || 'development',
+  allowPaymentSimulation: process.env.ALLOW_PAYMENT_SIMULATION === 'true',
   mfaTempTokenExpiry: '5m'
 };
