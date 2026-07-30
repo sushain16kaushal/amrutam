@@ -81,14 +81,14 @@ export default function BookingPage() {
     fetchDetails();
   }, [doctorId, slotId]);
 
-  const handleConfirmAndPay = async () => {
+  const handleConfirmAndPay = async (simulateFailure = false) => {
     if (!token) return;
     setBookingState('processing');
     setErrorMessage('');
 
     const result = await apiCall<BookingEnvelope>('/bookings', {
       method: 'POST',
-      body: { slotId },
+      body: { slotId, simulateFailure },
       token,
       idempotencyKey
     });
@@ -187,15 +187,25 @@ export default function BookingPage() {
         <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded">{errorMessage}</div>
       )}
 
-      <button
-        onClick={handleConfirmAndPay}
-        disabled={bookingState === 'processing'}
-        className="w-full py-3 bg-blue-600 text-white rounded disabled:opacity-50"
-      >
-        {bookingState === 'processing' ? 'Processing payment...' : `Confirm & Pay ₹${CONSULTATION_FEE}`}
-      </button>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => handleConfirmAndPay(false)}
+          disabled={bookingState === 'processing'}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sky-200 shadow-md"
+        >
+          {bookingState === 'processing' ? 'Processing payment...' : `Confirm & Pay ₹${CONSULTATION_FEE}`}
+        </button>
 
-      <p className="text-xs text-gray-400 text-center mt-3">
+        <button
+          onClick={() => handleConfirmAndPay(true)}
+          disabled={bookingState === 'processing'}
+          className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-lg disabled:opacity-50 transition-colors border border-red-200"
+        >
+          Simulate Cancel/Fail Payment (Rollback)
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-400 text-center mt-4">
         This is a simulated payment for demo purposes — no real charge will occur.
       </p>
     </main>
