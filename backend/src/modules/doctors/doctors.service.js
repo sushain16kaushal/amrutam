@@ -9,7 +9,7 @@ export const registerAsDoctor = async (userId, { specialty }) => {
   return doctorsRepo.createDoctorProfile({ userId, specialty });
 };
 
-export const addAvailabilitySlot = async (userId, { startTime, endTime, capacity }) => {
+export const addAvailabilitySlot = async (userId, { startTime, endTime }) => {
   const doctor = await doctorsRepo.findDoctorByUserId(userId);
   if (!doctor) throw new ApiError(404, 'Doctor profile not found — register as doctor first');
 
@@ -26,7 +26,10 @@ export const addAvailabilitySlot = async (userId, { startTime, endTime, capacity
     throw new ApiError(409, 'This slot overlaps with one of your existing slots');
   }
 
-  return doctorsRepo.createSlot({ doctorId: doctor.id, startTime, endTime, capacity });
+  // Human doctors ek time pe sirf ek patient dekh sakte hain — capacity request-body se
+  // NAHI leni, hardcode karo. (AI-doctor slots alag path se, slotManager.service.js
+  // ke through, apni khud ki capacity ke saath banate hain — yeh route unke liye nahi hai.)
+  return doctorsRepo.createSlot({ doctorId: doctor.id, startTime, endTime, capacity: 1 });
 };
 export const searchDoctors = async (query) => {
   const page = Math.max(1, parseInt(query.page) || 1);
