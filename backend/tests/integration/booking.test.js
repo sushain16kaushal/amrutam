@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 const registerAndLogin = async (role) => {
   const email = `jest_${role}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@amrutam.com`;
-  await request(app).post('/api/auth/register').send({ email, password: 'Test@1234', role });
+  await request(app).post('/api/auth/register').send({ email, password: 'Test@1234', role, country: 'IN', city: 'Gurugram' });
   const loginRes = await request(app).post('/api/auth/login').send({ email, password: 'Test@1234' });
   return loginRes.body.data.accessToken;
 };

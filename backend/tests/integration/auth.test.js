@@ -15,7 +15,7 @@ describe('Auth flow', () => {
   test('registers a user with valid credentials', async () => {
     const res = await request(app)
       .post('/api/auth/register')
-      .send({ email, password, role: 'patient' });
+      .send({ email, password, role: 'patient', country: 'IN', city: 'Gurugram' });
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.email).toBe(email);
@@ -24,7 +24,7 @@ describe('Auth flow', () => {
   test('rejects duplicate email registration', async () => {
     const res = await request(app)
       .post('/api/auth/register')
-      .send({ email, password, role: 'patient' });
+      .send({ email, password, role: 'patient', country: 'IN', city: 'Gurugram' });
     expect(res.status).toBe(409);
   });
 
