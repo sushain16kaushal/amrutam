@@ -35,7 +35,10 @@ jobs:
       DATABASE_URL: postgresql://amrutam_user:amrutam_pass@localhost:5432/amrutam
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-not-for-production
       ENCRYPTION_KEY: ci-test-encryption-key-not-for-prod
+      RESEND_API_KEY: re_ci_test_dummy_key_not_for_production
+      GROQ_API_KEY: gsk_ci_test_dummy_key_not_for_production
       NODE_ENV: test
 
     steps:
