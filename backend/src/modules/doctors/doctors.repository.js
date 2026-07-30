@@ -13,19 +13,23 @@ export const findDoctorByUserId = async (userId) => {
   return result.rows[0] || null;
 };
 
-export const createSlot = async ({ doctorId, startTime, endTime }) => {
+export const createSlot = async ({ doctorId, startTime, endTime, capacity }) => {
   const result = await pool.query(
-    `INSERT INTO availability_slots (doctor_id, start_time, end_time) VALUES ($1, $2, $3) RETURNING *`,
-    [doctorId, startTime, endTime]
+    `INSERT INTO availability_slots (doctor_id, start_time, end_time, capacity) VALUES ($1, $2, $3, $4) RETURNING *`,
+    [doctorId, startTime, endTime, capacity]
   );
   return result.rows[0];
 };
 
 export const listSlotsByDoctor = async (doctorId, { fromDate, status = 'open' } = {}) => {
   const result = await pool.query(
-    `SELECT * FROM availability_slots 
-     WHERE doctor_id = $1 AND status = $2 AND start_time >= COALESCE($3, start_time)
-     ORDER BY start_time ASC`,
+    `SELECT s.*,
+            COALESCE(COUNT(c.id) FILTER (WHERE c.status <> 'cancelled'), 0)::int AS booked_count
+     FROM availability_slots s
+     LEFT JOIN consultations c ON c.slot_id = s.id
+     WHERE s.doctor_id = $1 AND s.status = $2 AND s.end_time > COALESCE($3, NOW())
+     GROUP BY s.id
+     ORDER BY s.start_time ASC`,
     [doctorId, status, fromDate || null]
   );
   return result.rows;
@@ -35,11 +39,16 @@ export const findSlotById = async (slotId) => {
   const result = await pool.query('SELECT * FROM availability_slots WHERE id = $1', [slotId]);
   return result.rows[0] || null;
 };
-export const searchDoctors = async ({ specialty, name, availableFrom, availableTo, page = 1, limit = 10 }) => {
+export const searchDoctors = async ({ specialty, name, availableFrom, availableTo,doctorKind, page = 1, limit = 10 }) => {
   const conditions = ['d.verified = true']; // patients sirf verified doctors dekh sakte hain
   const values = [];
   let paramIndex = 1;
 
+   if (doctorKind) {
+    conditions.push(`d.doctor_kind = $${paramIndex}`);
+    values.push(doctorKind);
+    paramIndex++;
+  }
   if (specialty) {
     conditions.push(`d.specialty ILIKE $${paramIndex}`);
     values.push(`%${specialty}%`);
@@ -47,7 +56,10 @@ export const searchDoctors = async ({ specialty, name, availableFrom, availableT
   }
 
   if (name) {
-    conditions.push(`$${paramIndex} <% p.full_name`);// % operator = trigram similarity match
+   conditions.push(`(
+  left(lower(p.full_name), LEAST(3, length($${paramIndex}))) = left(lower($${paramIndex}), LEAST(3, length($${paramIndex})))
+  AND $${paramIndex} <% p.full_name
+)`);
     values.push(name);
     paramIndex++;
   }
@@ -66,7 +78,7 @@ export const searchDoctors = async ({ specialty, name, availableFrom, availableT
   values.push(limit, offset);
 
   const query = `
-    SELECT d.id, d.specialty, d.verified, p.full_name
+    SELECT d.id, d.specialty, d.verified,d.doctor_kind, p.full_name
     FROM doctors d
     JOIN profiles p ON p.user_id = d.user_id
     WHERE ${conditions.join(' AND ')}
@@ -78,11 +90,16 @@ export const searchDoctors = async ({ specialty, name, availableFrom, availableT
   return result.rows;
 };
 
-export const countSearchResults = async ({ specialty, name, availableFrom, availableTo }) => {
+export const countSearchResults = async ({ specialty, name, availableFrom, availableTo, doctorKind }) => {
   const conditions = ['d.verified = true'];
   const values = [];
   let paramIndex = 1;
 
+  if (doctorKind) {
+    conditions.push(`d.doctor_kind = $${paramIndex}`);
+    values.push(doctorKind);
+    paramIndex++;
+  }
   if (specialty) {
     conditions.push(`d.specialty ILIKE $${paramIndex}`);
     values.push(`%${specialty}%`);
@@ -111,4 +128,77 @@ export const countSearchResults = async ({ specialty, name, availableFrom, avail
 
   const result = await pool.query(query, values);
   return result.rows[0].total;
+};
+export const listDistinctSpecialties = async () => {
+  const result = await pool.query(
+    `SELECT DISTINCT specialty FROM doctors WHERE verified = true ORDER BY specialty ASC`
+  );
+  return result.rows.map(r => r.specialty);
+};
+export const findDoctorById = async (doctorId) => {
+  const result = await pool.query(
+    `SELECT d.id, d.specialty, d.verified, p.full_name
+     FROM doctors d
+     LEFT JOIN profiles p ON p.user_id = d.user_id
+     WHERE d.id = $1`,
+    [doctorId]
+  );
+  return result.rows[0] || null;
+};
+export const findUnverified = async () => {
+  const result = await pool.query(
+    `SELECT d.id, d.specialty, d.verified, d.created_at, p.full_name
+     FROM doctors d
+     JOIN profiles p ON p.user_id = d.user_id
+     WHERE d.verified = false
+     ORDER BY d.created_at ASC`
+  );
+  return result.rows;
+};
+
+export const verifyDoctorById = async (doctorId) => {
+  const result = await pool.query(
+    `UPDATE doctors SET verified = true WHERE id = $1 RETURNING id, specialty, verified`,
+    [doctorId]
+  );
+  return result.rows[0] || null;
+};
+export const expireOldOpenSlots = async () => {
+  const result = await pool.query(
+    `UPDATE availability_slots
+     SET status = 'expired'
+     WHERE status = 'open' AND end_time < NOW()
+     RETURNING id`
+  );
+  return result.rowCount; // kitne slots expire hue, logging ke liye
+};
+export const checkSlotOverlap = async (doctorId, newStart, newEnd) => {
+  const result = await pool.query(
+    `SELECT id FROM availability_slots
+     WHERE doctor_id = $1
+       AND status = 'open'
+       AND start_time < $3
+       AND end_time > $2
+     LIMIT 1`,
+    [doctorId, newStart, newEnd]
+  );
+  return result.rowCount > 0;
+};
+export const findAiDoctors = async () => {
+  const result = await pool.query(
+    `SELECT id, specialty FROM doctors WHERE doctor_kind = 'ai'`
+  );
+  return result.rows;
+};
+
+// Ek specific din (date range) mein doctor ke pass already slots hain ya nahi — 
+// idempotency ke liye zaroori hai, taaki job dobara chale toh duplicate slots na banein
+export const countOpenSlotsForDoctorInRange = async (doctorId, rangeStart, rangeEnd) => {
+  const result = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM availability_slots
+     WHERE doctor_id = $1 AND status = 'open'
+       AND start_time >= $2 AND start_time < $3`,
+    [doctorId, rangeStart, rangeEnd]
+  );
+  return result.rows[0].count;
 };

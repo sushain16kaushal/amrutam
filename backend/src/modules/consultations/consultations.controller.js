@@ -21,3 +21,15 @@ export const getOne = async (req, res) => {
     success(res, result);
   } catch (err) { error(res, err); }
 };
+export const getMine = async (req, res) => {
+  try {
+    const consultations = await consultService.getMyConsultations(req.user.id);
+    success(res, consultations);
+  } catch (err) { error(res, err); }
+};
+export const getAssigned = async (req, res) => {
+  try {
+    const consultations = await consultService.getAssignedConsultations(req.user.id);
+    success(res, consultations);
+  } catch (err) { error(res, err); }
+};

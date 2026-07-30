@@ -51,11 +51,12 @@ export const cancelConsultation = async (userId, consultationId) => {
     throw new ApiError(400, `Cannot cancel a consultation that is '${consultation.status}'`);
   }
 
-  const client = await pool.connect();
+const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const updated = await consultRepo.updateStatus(client, consultationId, 'cancelled');
-    await consultRepo.reopenSlot(client, consultation.slot_id); // saga: slot wapas book-able ban jaye
+    // reopenSlot() call hataya — ab zaroorat nahi, kyunki availability
+    // hamesha live count (COUNT WHERE status <> 'cancelled') se calculate hoti hai
     await logAction({ actorId: userId, action: 'consultation_cancelled', metadata: { consultationId, slotId: consultation.slot_id } }, client);
     await client.query('COMMIT');
     return updated;
@@ -77,4 +78,53 @@ export const getConsultation = async (userId, consultationId) => {
     throw new ApiError(403, 'You are not part of this consultation');
   }
   return consultation;
+};
+export const getMyConsultations = async (patientId) => {
+  return consultRepo.findByPatientId(patientId);
+};
+export const getAssignedConsultations = async (doctorUserId) => {
+  return consultRepo.findByDoctorUserId(doctorUserId);
+};
+const completeConsultationSystem = async (consultationId, fromStatus) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const updated = await consultRepo.updateStatus(client, consultationId, 'completed');
+    await logAction({
+      actorId: null, // system-triggered, koi human-actor nahi
+      action: 'consultation_auto_completed',
+      metadata: { consultationId, from: fromStatus, reason: 'slot_expired' }
+    }, client);
+    await client.query('COMMIT');
+    return updated;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+// Single-consultation lazy-check — socket.js isko call karega
+export const autoCompleteIfExpired = async (consultation) => {
+  if (['completed', 'cancelled'].includes(consultation.status)) return consultation;
+  if (new Date(consultation.end_time) > new Date()) return consultation;
+
+  const updated = await completeConsultationSystem(consultation.id, consultation.status);
+  return { ...consultation, ...updated }; // status='completed' overwrite, baaki-fields (doctor_kind etc.) preserved
+};
+
+// Bulk cron-check — worker isko call karega
+export const autoCompleteExpiredConsultations = async () => {
+  const expired = await consultRepo.findExpiredActiveConsultations();
+  let count = 0;
+  for (const row of expired) {
+    try {
+      await completeConsultationSystem(row.id, row.status);
+      count++;
+    } catch (err) {
+      console.error(`Failed to auto-complete consultation ${row.id}:`, err);
+    }
+  }
+  return count;
 };

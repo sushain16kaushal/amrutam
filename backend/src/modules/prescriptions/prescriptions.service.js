@@ -18,8 +18,7 @@ export const createPrescription = async (userId, consultationId, details) => {
   if (!PRESCRIBABLE_STATUSES.includes(consultation.status)) {
     throw new ApiError(400, `Cannot prescribe while consultation is '${consultation.status}'`);
   }
-  return prescriptionsRepo.create({ consultationId, details });
-    const prescription = await prescriptionsRepo.create({ consultationId, details });
+  const prescription = await prescriptionsRepo.create({ consultationId, details });
   await logAction({ actorId: userId, action: 'prescription_created', metadata: { consultationId, prescriptionId: prescription.id } });
   return prescription;
 };

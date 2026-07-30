@@ -11,3 +11,15 @@ export const notificationQueue = new Queue('notifications', {
     removeOnFail: 500      // failed jobs kept longer — dead-letter-ish inspection
   }
 });
+
+// NEW — recurring job, slot expiry ke liye. Alag queue kyunki iska nature different hai
+// (scheduled/repeating, na ki ek-baari event-triggered jaisa notifications)
+export const maintenanceQueue = new Queue('maintenance', {
+  connection: redis.options,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: 20,
+    removeOnFail: 50
+  }
+});

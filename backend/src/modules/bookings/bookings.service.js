@@ -17,12 +17,9 @@ const mockChargePayment = async (amount, forceFail = false) => {
   if (forceFail) return { success: false, reason: 'Card declined (simulated for demo)' };
   return { success: true, reference: `mock_txn_${Date.now()}` };
 };
-
 export const bookSlot = async (patientId, { slotId, simulateFailure = false }) => {
-   const forceFail = env.allowPaymentSimulation && simulateFailure; // NEW
   const lockToken = await acquireLock(`slot:${slotId}`);
   if (!lockToken) {
-     slotLockContentionTotal.inc(); // NEW
     throw new ApiError(409, 'Slot is currently being booked by someone else — try again in a moment');
   }
 
@@ -30,22 +27,29 @@ export const bookSlot = async (patientId, { slotId, simulateFailure = false }) =
   try {
     await client.query('BEGIN');
 
-    const slot = await bookingsRepo.getSlotForUpdate(client, slotId);
+    const slot = await bookingsRepo.getSlotForUpdate(client, slotId); // row lock — capacity check race-safe rahega
     if (!slot) throw new ApiError(404, 'Slot not found');
     if (slot.status !== 'open') throw new ApiError(409, 'Slot is no longer available');
 
-    const consultation = await bookingsRepo.createConsultation(client, { slotId, patientId });
-    await bookingsRepo.markSlotBooked(client, slotId);
+    // NEW — same patient dobara isi slot ko book na kar paaye
+    const alreadyBooked = await bookingsRepo.hasActiveBooking(client, slotId, patientId);
+    if (alreadyBooked) {
+      throw new ApiError(409, 'You have already booked this slot');
+    }
 
-    // Saga ka "risky" external step — payment
-    const paymentResult = await mockChargePayment(CONSULTATION_FEE, forceFail);
+    // NEW — capacity check, status check ki jagah
+    const activeCount = await bookingsRepo.countActiveBookings(client, slotId);
+    if (activeCount >= slot.capacity) {
+      throw new ApiError(409, 'This slot is fully booked (Housefull)');
+    }
+
+    const consultation = await bookingsRepo.createConsultation(client, { slotId, patientId });
+    // markSlotBooked call hataya — capacity-based model mein zaroorat nahi
+
+    const paymentResult = await mockChargePayment(CONSULTATION_FEE, simulateFailure);
 
     if (!paymentResult.success) {
-      // Compensating action: booking + slot status change dono undo,
-      // kyunki payment fail hua toh consultation valid nahi hai
       await client.query('ROLLBACK');
-       bookingsFailedTotal.inc({ reason: 'payment_declined' }); // NEW
-       await logAction({ actorId: patientId, action: 'booking_failed', metadata: { slotId, reason: paymentResult.reason } });
       throw new ApiError(402, `Payment failed: ${paymentResult.reason}. Booking was not created.`);
     }
 
@@ -55,15 +59,11 @@ export const bookSlot = async (patientId, { slotId, simulateFailure = false }) =
       status: 'success'
     });
     const confirmed = await bookingsRepo.updateConsultationStatus(client, consultation.id, 'confirmed');
-  await logAction({ actorId: patientId, action: 'booking_created', metadata: { consultationId: confirmed.id, slotId } }, client);
+
     await client.query('COMMIT');
-    const patient = await findUserById(patientId); // email chahiye notification ke liye
-await queueBookingConfirmation(patient.email, confirmed.id).catch((err) =>
-  logger.error({ err }, 'Failed to queue booking confirmation — booking itself succeeded')
-);
     return confirmed;
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {}); // dobara ROLLBACK harmless hai agar transaction already band ho chuki
+    await client.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();

@@ -1,5 +1,4 @@
 export const getSlotForUpdate = async (client, slotId) => {
-  // Row-level lock — Redis lock ke saath doosri layer of defense (DB level)
   const result = await client.query(
     `SELECT * FROM availability_slots WHERE id = $1 FOR UPDATE`,
     [slotId]
@@ -7,8 +6,13 @@ export const getSlotForUpdate = async (client, slotId) => {
   return result.rows[0] || null;
 };
 
-export const markSlotBooked = async (client, slotId) => {
-  await client.query(`UPDATE availability_slots SET status = 'booked' WHERE id = $1`, [slotId]);
+// NEW — capacity check ke liye, same transaction ke andar (lock ke saath consistent)
+export const countActiveBookings = async (client, slotId) => {
+  const result = await client.query(
+    `SELECT COUNT(*)::int AS count FROM consultations WHERE slot_id = $1 AND status <> 'cancelled'`,
+    [slotId]
+  );
+  return result.rows[0].count;
 };
 
 export const createConsultation = async (client, { slotId, patientId }) => {
@@ -34,3 +38,13 @@ export const createPayment = async (client, { consultationId, amount, status }) 
   );
   return result.rows[0];
 };
+export const hasActiveBooking = async (client, slotId, patientId) => {
+  const result = await client.query(
+    `SELECT id FROM consultations WHERE slot_id = $1 AND patient_id = $2 AND status <> 'cancelled' LIMIT 1`,
+    [slotId, patientId]
+  );
+  return result.rowCount > 0;
+};
+
+// markSlotBooked hata diya — ab status column single-booking flag nahi hai,
+// availability capacity vs live count se decide hoti hai, static status se nahi

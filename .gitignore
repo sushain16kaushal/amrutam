@@ -101,3 +101,4 @@ target/
 *.njsproj
 *.sln
 *.sw?
+secretfile.txt

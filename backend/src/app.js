@@ -15,6 +15,11 @@ import pinoHttp from 'pino-http';
 import logger from './utils/logger.js';
 import { requestId } from './middlewares/requestId.middleware.js';
 import register, { httpRequestDuration } from './utils/metrics.js';
+import messagesRoutes from './modules/messages/messages.routes.js';
+import reviewsRoutes from './modules/reviews/reviews.routes.js';
+import refundsRoutes from './modules/refunds/refunds.routes.js';
+import adminRefundsRoutes from './modules/refunds/admin-refunds.routes.js';
+import moderationRoutes from './modules/moderation/moderation.routes.js';
 const app = express();
 app.use(helmet()); 
 app.use(cors()); 
@@ -35,7 +40,12 @@ app.use('/api/auth', authLimiter);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/consultations', consultationsRoutes);
 app.use('/api/consultations/:consultationId/prescriptions', prescriptionsRoutes);
+app.use('/api/consultations/:consultationId/reviews', reviewsRoutes);
+app.use('/api/consultations/:consultationId/refunds', refundsRoutes);
+
+app.use('/api/refunds', adminRefundsRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/moderation', moderationRoutes);
 app.use((req, res, next) => {
   const start = process.hrtime.bigint();
   res.on('finish', () => {
@@ -61,5 +71,5 @@ app.use('/api/doctors', doctorsRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use(errorHandler); // hamesha sabse aakhir mein
-
+app.use('/api/consultations/:consultationId/messages', messagesRoutes);
 export default app;

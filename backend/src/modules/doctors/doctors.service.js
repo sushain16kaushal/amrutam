@@ -9,7 +9,7 @@ export const registerAsDoctor = async (userId, { specialty }) => {
   return doctorsRepo.createDoctorProfile({ userId, specialty });
 };
 
-export const addAvailabilitySlot = async (userId, { startTime, endTime }) => {
+export const addAvailabilitySlot = async (userId, { startTime, endTime, capacity }) => {
   const doctor = await doctorsRepo.findDoctorByUserId(userId);
   if (!doctor) throw new ApiError(404, 'Doctor profile not found — register as doctor first');
 
@@ -20,17 +20,24 @@ export const addAvailabilitySlot = async (userId, { startTime, endTime }) => {
     throw new ApiError(400, 'Cannot create a slot in the past');
   }
 
-  return doctorsRepo.createSlot({ doctorId: doctor.id, startTime, endTime });
+  // NEW
+  const hasOverlap = await doctorsRepo.checkSlotOverlap(doctor.id, startTime, endTime);
+  if (hasOverlap) {
+    throw new ApiError(409, 'This slot overlaps with one of your existing slots');
+  }
+
+  return doctorsRepo.createSlot({ doctorId: doctor.id, startTime, endTime, capacity });
 };
 export const searchDoctors = async (query) => {
   const page = Math.max(1, parseInt(query.page) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(query.limit) || 10)); // max 50 per page — abuse-proofing
-
+  const doctorKind = ['ai', 'human'].includes(query.doctorKind) ? query.doctorKind : undefined;
   const filters = {
     specialty: query.specialty,
     name: query.name,
     availableFrom: query.availableFrom,
     availableTo: query.availableTo,
+    doctorKind,
     page,
     limit
   };
@@ -47,4 +54,24 @@ export const searchDoctors = async (query) => {
 };
 export const getDoctorAvailability = async (doctorId, query) => {
   return doctorsRepo.listSlotsByDoctor(doctorId, query);
+};
+export const getSpecialties = async () => {
+  return doctorsRepo.listDistinctSpecialties();
+};
+export const getDoctorById = async (doctorId) => {
+  const doctor = await doctorsRepo.findDoctorById(doctorId);
+  if (!doctor) throw new ApiError(404, 'Doctor not found');
+  return doctor;
+};
+export const getMyDoctorProfile = async (userId) => {
+  return doctorsRepo.findDoctorByUserId(userId); // null aayega agar abhi register nahi kiya
+};
+export const listUnverifiedDoctors = async () => {
+  return doctorsRepo.findUnverified();
+};
+
+export const verifyDoctor = async (doctorId) => {
+  const updated = await doctorsRepo.verifyDoctorById(doctorId);
+  if (!updated) throw new ApiError(404, 'Doctor not found');
+  return updated;
 };
