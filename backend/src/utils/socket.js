@@ -7,6 +7,7 @@ import logger from './logger.js';
 import { generateAndSaveAiReply } from '../modules/ai-agents/aiChatResponder.service.js';
 import { moderateAndCreateMessage, isConsultationLocked } from '../modules/moderation/moderation.service.js'; 
 import { autoCompleteIfExpired } from '../modules/consultations/consultations.service.js';
+import { isChatLocked, registerMessageAndCheckLimit } from '../utils/chatLimit.util.js';
 let io;
 
 export const initSocket = (httpServer) => {
@@ -80,6 +81,21 @@ export const initSocket = (httpServer) => {
         const locked = await isConsultationLocked(consultationId);
         if (locked) {
           return callback?.({ error: 'This chat is temporarily locked pending review.' });
+        }
+
+        // NEW — daily AI-token-cost protection: sirf patient→AI-doctor messages pe lagta hai
+        // (human-doctor consultations token-cost nahi karti, unko limit se exempt rakha hai)
+        if (isPatient && consultation.doctor_kind === 'ai') {
+          if (await isChatLocked(socket.user.id)) {
+            return callback?.({ error: 'You have reached your daily AI chat limit. Please contact admin to continue.' });
+          }
+          const { allowed } = await registerMessageAndCheckLimit(socket.user.id);
+          if (!allowed) {
+            io.to(`consultation:${consultationId}`).emit('chat_locked', {
+              reason: 'Daily AI chat limit reached. Please contact admin to unlock.'
+            });
+            return callback?.({ error: 'You have reached your daily AI chat limit. Please contact admin to continue.' });
+          }
         }
 
         // CHANGED — direct messagesRepo.createMessage() ki jagah moderation wrapper se
