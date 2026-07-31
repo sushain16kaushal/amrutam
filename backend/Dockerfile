@@ -11,6 +11,7 @@ ENV TRANSFORMERS_CACHE=/tmp/.transformers-cache
 ENV HF_HOME=/tmp/.transformers-cache
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p /app/uploads/consultation-images && chown -R node:node /app/uploads
 EXPOSE 5000
 USER node
 CMD ["node", "src/server.js"]
