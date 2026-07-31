@@ -36,8 +36,8 @@ services:
     ports:
       - "5000:5000"
     environment:
-      DATABASE_URL: postgresql://amrutam_user:amrutam_pass@postgres:5432/amrutam
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRY: 15m
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
@@ -45,7 +45,8 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       OTEL_EXPORTER_URL: http://jaeger:4318/v1/traces
-      NODE_ENV: production
+      NODE_ENV: development
+      PORT: 5000
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRY: 7d
       GROQ_API_KEY: ${GROQ_API_KEY}

@@ -14,7 +14,7 @@ const registerAndLogin = async (role) => {
   await fetch(`${AUTH_BASE_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: 'Test@1234', role })
+    body: JSON.stringify({ email, password: 'Test@1234', role, country: 'IN', city: 'Gurugram' })
   });
   const loginRes = await fetch(`${AUTH_BASE_URL}/login`, {
     method: 'POST',

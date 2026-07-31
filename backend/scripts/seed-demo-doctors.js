@@ -1,9 +1,10 @@
 import pg from 'pg';
+import { env } from '../src/config/env.js';
 
 const AUTH = 'http://localhost:5000/api/auth';
 const DOC = 'http://localhost:5000/api/doctors';
 
-const pool = new pg.Pool({ connectionString: 'postgresql://amrutam_user:amrutam_pass@localhost:5432/amrutam' });
+const pool = new pg.Pool({ connectionString: env.databaseUrl });
 
 const doctorsData = [
   ['Ramesh Sharma', 'Cardiology'], ['Anjali Mehta', 'Cardiology'], ['Vikram Rathore', 'Cardiology'],
