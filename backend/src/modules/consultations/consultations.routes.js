@@ -12,4 +12,5 @@ router.get('/assigned', authenticate, consultController.getAssigned); // NEW —
 router.get('/:id', authenticate, consultController.getOne);
 router.post('/:id/cancel', authenticate, consultController.cancel);
 router.patch('/:id/status', authenticate, validate(updateStatusSchema), consultController.updateStatus);
+router.patch('/:id/hide', authenticate, consultController.hideConsultation);
 export default router;

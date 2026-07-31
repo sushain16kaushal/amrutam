@@ -18,11 +18,24 @@ export const findByPatientId = async (patientId) => {
      JOIN doctors d ON s.doctor_id = d.id
      JOIN profiles p ON p.user_id = d.user_id
      WHERE c.patient_id = $1
+       AND c.hidden_by_patient = false
      ORDER BY s.start_time DESC`,
     [patientId]
   );
   return result.rows;
 };
+
+export const hideByPatientId = async (consultationId, patientId) => {
+  const result = await pool.query(
+    `UPDATE consultations
+     SET hidden_by_patient = true
+     WHERE id = $1 AND patient_id = $2
+     RETURNING *`,
+    [consultationId, patientId]
+  );
+  return result.rows[0];
+};
+
 export const findByDoctorUserId = async (doctorUserId) => {
   const result = await pool.query(
     `SELECT c.id, c.status, c.created_at,

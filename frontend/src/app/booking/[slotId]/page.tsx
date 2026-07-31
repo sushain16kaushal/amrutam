@@ -99,6 +99,10 @@ export default function BookingPage() {
     } else {
       setErrorMessage(result.data.message || 'Booking failed. Please try again.');
       setBookingState('error');
+      if (simulateFailure) {
+        alert('Payment cancelled. Transaction rolled back, slot remains open.');
+        router.push(doctorId ? `/doctors/${doctorId}` : '/doctors');
+      }
     }
   };
 

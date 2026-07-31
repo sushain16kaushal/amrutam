@@ -33,3 +33,9 @@ export const getAssigned = async (req, res) => {
     success(res, consultations);
   } catch (err) { error(res, err); }
 };
+export const hideConsultation = async (req, res) => {
+  try {
+    const result = await consultService.hideConsultation(req.user.id, req.params.id);
+    success(res, result);
+  } catch (err) { error(res, err); }
+};

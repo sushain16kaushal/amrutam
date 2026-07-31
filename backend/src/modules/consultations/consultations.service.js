@@ -85,6 +85,12 @@ export const getMyConsultations = async (patientId) => {
 export const getAssignedConsultations = async (doctorUserId) => {
   return consultRepo.findByDoctorUserId(doctorUserId);
 };
+
+export const hideConsultation = async (patientId, consultationId) => {
+  const updated = await consultRepo.hideByPatientId(consultationId, patientId);
+  if (!updated) throw new ApiError(404, 'Consultation not found');
+  return updated;
+};
 const completeConsultationSystem = async (consultationId, fromStatus) => {
   const client = await pool.connect();
   try {

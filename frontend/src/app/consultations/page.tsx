@@ -33,6 +33,7 @@ useEffect(() => {
   const [pageState, setPageState] = useState<PageState>('loading');
   const [consultations, setConsultations] = useState<MyConsultation[]>([]);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [clearingId, setClearingId] = useState<string | null>(null);
 
   const [prescriptions, setPrescriptions] = useState<Record<string, Prescription[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -99,6 +100,22 @@ const [refundStatuses, setRefundStatuses] = useState<Record<string, RefundReques
       );
     } else {
       alert('Could not cancel this consultation. Please try again.');
+    }
+  };
+
+  const handleClear = async (id: string) => {
+    if (!token) return;
+    const confirmed = window.confirm('This consultation will be removed from your list. Continue?');
+    if (!confirmed) return;
+
+    setClearingId(id);
+    const result = await apiCall(`/consultations/${id}/hide`, { method: 'PATCH', token });
+    setClearingId(null);
+
+    if (result.status === 200) {
+      setConsultations((prev) => prev.filter((c) => c.id !== id));
+    } else {
+      alert('Could not clear this consultation. Please try again.');
     }
   };
 
@@ -236,9 +253,23 @@ const handleSubmitRefund = async (consultationId: string) => {
                   </div>
                   
                   <div className="flex flex-col items-end gap-2">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider ${STATUS_STYLES[c.status] || 'bg-slate-100 text-slate-600'}`}>
-                      {c.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider ${STATUS_STYLES[c.status] || 'bg-slate-100 text-slate-600'}`}>
+                        {c.status.replace('_', ' ')}
+                      </span>
+                      <button
+                        onClick={() => handleClear(c.id)}
+                        disabled={clearingId === c.id}
+                        title="Clear from list"
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 w-6 h-6 flex items-center justify-center rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {clearingId === c.id ? (
+                          <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                        ) : (
+                          '✕'
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -353,7 +384,7 @@ const handleSubmitRefund = async (consultationId: string) => {
                     
                     {/* Review Section */}
                     {!submittedReviews.has(c.id) && (
-                      <div className="flex-1 min-w-[250px]">
+                      <div className="flex-1 min-w-62.5">
                         {reviewOpenId === c.id ? (
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-fade-in">
                             <p className="text-sm font-semibold text-slate-800 mb-2">Rate your consultation</p>
@@ -390,7 +421,7 @@ const handleSubmitRefund = async (consultationId: string) => {
                     )}
 
                     {/* Refund Section */}
-                    <div className="flex-1 min-w-[250px] flex justify-end">
+                    <div className="flex-1 min-w-62.5 flex justify-end">
                       {refundStatuses[c.id] ? (
                         <div className="text-right">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
