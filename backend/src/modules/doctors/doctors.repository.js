@@ -22,15 +22,18 @@ export const createSlot = async ({ doctorId, startTime, endTime, capacity }) => 
 };
 
 export const listSlotsByDoctor = async (doctorId, { fromDate, status = 'open' } = {}) => {
+  // fromDate nahi diya toh backend ka current time use karo
+  const now = fromDate || new Date().toISOString(); // ← Backend ka time (UTC)
+  
   const result = await pool.query(
     `SELECT s.*,
             COALESCE(COUNT(c.id) FILTER (WHERE c.status <> 'cancelled'), 0)::int AS booked_count
      FROM availability_slots s
      LEFT JOIN consultations c ON c.slot_id = s.id
-     WHERE s.doctor_id = $1 AND s.status = $2 AND s.end_time > COALESCE($3, NOW())
+     WHERE s.doctor_id = $1 AND s.status = $2 AND s.end_time > $3
      GROUP BY s.id
      ORDER BY s.start_time ASC`,
-    [doctorId, status, fromDate || null]
+    [doctorId, status, now]
   );
   return result.rows;
 };
@@ -164,13 +167,15 @@ export const verifyDoctorById = async (doctorId) => {
   return result.rows[0] || null;
 };
 export const expireOldOpenSlots = async () => {
+  const now = new Date().toISOString(); // Backend time UTC
   const result = await pool.query(
     `UPDATE availability_slots
      SET status = 'expired'
-     WHERE status = 'open' AND end_time < NOW()
-     RETURNING id`
+     WHERE status = 'open' AND end_time < $1
+     RETURNING id`,
+    [now]
   );
-  return result.rowCount; // kitne slots expire hue, logging ke liye
+  return result.rowCount;
 };
 export const checkSlotOverlap = async (doctorId, newStart, newEnd) => {
   const result = await pool.query(
