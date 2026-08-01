@@ -3,6 +3,7 @@ import { Doctor, AvailabilitySlot } from '@/types';
 import Link from 'next/link';
 import StarRating from '@/components/StarRating';
 import { DoctorReviewsData } from '@/types';
+import SlotTime from '@/components/SlotTime';
 type Props = { params: Promise<{ doctorId: string }> };
 
 export default async function DoctorDetailPage({ params }: Props) {
@@ -71,7 +72,7 @@ const [doctorResult, slotsResult, reviewsResult] = await Promise.allSettled([
           <p className="text-sm text-gray-700 mt-1">{r.review_text}</p>
         )}
         <p className="text-xs text-gray-400 mt-1">
-          {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}
         </p>
       </div>
     ))}
@@ -82,33 +83,19 @@ const [doctorResult, slotsResult, reviewsResult] = await Promise.allSettled([
       <h2 className="text-lg font-medium mb-3">Available Slots</h2>
 
      {openSlots.map((slot) => {
-  const start = new Date(slot.start_time);
-  const end = new Date(slot.end_time);
   const seatsLeft = slot.capacity - slot.booked_count;
   const isFull = seatsLeft <= 0;
 
   return isFull ? (
     <div key={slot.id} className="card opacity-50 cursor-not-allowed">
-      <div className="font-medium">
-        {start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-      </div>
-      <div className="text-gray-500 text-sm">
-        {start.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} –{' '}
-        {end.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-      </div>
+      <SlotTime startTime={slot.start_time} endTime={slot.end_time} />
       <span className="inline-block mt-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
         Housefull
       </span>
     </div>
   ) : (
     <Link key={slot.id} href={`/booking/${slot.id}?doctorId=${doctorId}`} className="card block">
-      <div className="font-medium">
-        {start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-      </div>
-      <div className="text-gray-500 text-sm">
-        {start.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} –{' '}
-        {end.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-      </div>
+      <SlotTime startTime={slot.start_time} endTime={slot.end_time} />
       <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
         {seatsLeft} slot{seatsLeft !== 1 ? 's' : ''} left
       </span>
