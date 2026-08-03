@@ -5,6 +5,7 @@ import { Country, City } from 'country-state-city';
 import { apiCall } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import RequireAuth from '@/components/RequireAuth';
+import SearchableSelect from '@/components/SearchableSelect';
 
 function CompleteProfileForm() {
   const router = useRouter();
@@ -20,9 +21,26 @@ function CompleteProfileForm() {
     [countryCode]
   );
 
+  const countryOptions = useMemo(
+    () => (countries || []).map((c) => ({ value: c.isoCode, label: c.name })),
+    [countries]
+  );
+ const cityOptions = useMemo(
+  () => (cities || []).map((ct, idx) => ({
+    value: ct.name,
+    label: ct.name,
+    id: `${ct.name}-${ct.stateCode}-${idx}` // unique React-key, backend ko sirf 'value' jaata hai
+  })),
+  [cities]
+);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!countryCode || !city) {
+      setError('Please select both country and city');
+      return;
+    }
     setLoading(true);
     const { status, data } = await apiCall('/users/me', {
       method: 'PATCH',
@@ -41,23 +59,20 @@ function CompleteProfileForm() {
         Tell us your location so we can connect you with doctors and services near you.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <select required value={countryCode}
-          onChange={(e) => { setCountryCode(e.target.value); setCity(''); }}
-          className="input-field">
-          <option value="">Select country</option>
-          {countries?.map((c) => (
-            <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
-          ))}
-        </select>
+        <SearchableSelect
+          options={countryOptions}
+          value={countryCode}
+          onChange={(val) => { setCountryCode(val); setCity(''); }}
+          placeholder="Search country..."
+        />
 
-        <select required value={city} disabled={!countryCode}
-          onChange={(e) => setCity(e.target.value)}
-          className="input-field">
-          <option value="">Select city</option>
-         {cities?.map((ct, idx) => (
-  <option key={`${ct.name}-${ct.stateCode}-${idx}`} value={ct.name}>{ct.name}</option>
-))}
-        </select>
+        <SearchableSelect
+          options={cityOptions}
+          value={city}
+          onChange={(val) => setCity(val)}
+          placeholder={countryCode ? 'Search city...' : 'Select country first'}
+          disabled={!countryCode}
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button type="submit" disabled={loading} className="btn-primary">

@@ -22,10 +22,14 @@ export default function RegisterPage() {
     () => (countries || []).map((c) => ({ value: c.isoCode, label: c.name })),
     [countries]
   );
-  const cityOptions = useMemo(
-    () => (cities || []).map((ct) => ({ value: ct.name, label: ct.name })),
-    [cities]
-  );
+const cityOptions = useMemo(
+  () => (cities || []).map((ct, idx) => ({
+    value: ct.name,
+    label: ct.name,
+    id: `${ct.name}-${ct.stateCode}-${idx}` // unique React-key, backend ko sirf 'value' jaata hai
+  })),
+  [cities]
+);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

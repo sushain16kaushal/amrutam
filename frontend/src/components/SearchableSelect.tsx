@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 
-type Option = { value: string; label: string };
+type Option = { value: string; label: string; id?: string };
 
 type Props = {
   options: Option[];
@@ -111,7 +111,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           ) : (
             filtered.map((o, i) => (
               <li
-                key={o.value}
+                key={o.id ?? o.value}
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => selectOption(o)}
                 className={`cursor-pointer px-3 py-2 text-sm ${i === activeIndex ? 'bg-sky-50' : 'hover:bg-sky-50'}`}
