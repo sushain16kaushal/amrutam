@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { apiCall } from '@/lib/api';
 import { Country, City } from 'country-state-city';
 import Link from 'next/link';
+import SearchableSelect from '@/components/SearchableSelect';
 
 export default function DoctorRegisterPage() {
   const router = useRouter();
@@ -13,6 +14,15 @@ export default function DoctorRegisterPage() {
 
   const countries = useMemo(() => Country.getAllCountries(), []);
   const cities = useMemo(() => (form.country ? City.getCitiesOfCountry(form.country) : []), [form.country]);
+
+  const countryOptions = useMemo(
+    () => (countries || []).map((c) => ({ value: c.isoCode, label: c.name })),
+    [countries]
+  );
+  const cityOptions = useMemo(
+    () => (cities || []).map((ct, idx) => ({ value: ct.name, label: ct.name, key: `${ct.name}-${ct.stateCode}-${idx}` })),
+    [cities]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,19 +48,20 @@ export default function DoctorRegisterPage() {
         <input type="text" placeholder="Full name" value={form.fullName}
           onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="input-field" />
 
-        <select required value={form.country}
-          onChange={(e) => setForm({ ...form, country: e.target.value, city: '' })} className="input-field">
-          <option value="">Select country</option>
-          {countries?.map((c) => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
-        </select>
+        <SearchableSelect
+          options={countryOptions}
+          value={form.country}
+          onChange={(val) => setForm({ ...form, country: val, city: '' })}
+          placeholder="Search country..."
+        />
 
-        <select required value={form.city} disabled={!form.country}
-          onChange={(e) => setForm({ ...form, city: e.target.value })} className="input-field">
-          <option value="">Select city</option>
-          {cities?.map((ct, idx) => (
-            <option key={`${ct.name}-${ct.stateCode}-${idx}`} value={ct.name}>{ct.name}</option>
-          ))}
-        </select>
+        <SearchableSelect
+          options={cityOptions}
+          value={form.city}
+          onChange={(val) => setForm({ ...form, city: val })}
+          placeholder={form.country ? 'Search city...' : 'Select country first'}
+          disabled={!form.country}
+        />
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button type="submit" disabled={loading} className="btn-primary">

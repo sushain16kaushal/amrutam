@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { apiCall } from '@/lib/api';
 import { Country, City } from 'country-state-city';
 import Link from 'next/link';
+import SearchableSelect from '@/components/SearchableSelect';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,6 +16,15 @@ export default function RegisterPage() {
   const cities = useMemo(
     () => (form.country ? City.getCitiesOfCountry(form.country) : []),
     [form.country]
+  );
+
+  const countryOptions = useMemo(
+    () => (countries || []).map((c) => ({ value: c.isoCode, label: c.name })),
+    [countries]
+  );
+  const cityOptions = useMemo(
+    () => (cities || []).map((ct) => ({ value: ct.name, label: ct.name })),
+    [cities]
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -82,33 +92,23 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Country</label>
-              <select 
-                required 
+              <SearchableSelect
+                options={countryOptions}
                 value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value, city: '' })}
-                className="input-field w-full"
-              >
-                <option value="">Select...</option>
-                {countries?.map((c) => (
-                  <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
-                ))}
-              </select>
+                onChange={(val) => setForm({ ...form, country: val, city: '' })}
+                placeholder="Search country..."
+              />
             </div>
             
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">City</label>
-              <select 
-                required 
-                value={form.city} 
+              <SearchableSelect
+                options={cityOptions}
+                value={form.city}
+                onChange={(val) => setForm({ ...form, city: val })}
+                placeholder={form.country ? 'Search city...' : 'Select country first'}
                 disabled={!form.country}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="input-field w-full disabled:opacity-50 disabled:bg-slate-100"
-              >
-                <option value="">Select...</option>
-                {cities?.map((ct, idx) => (
-                  <option key={`${ct.name}-${ct.stateCode}-${idx}`} value={ct.name}>{ct.name}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
