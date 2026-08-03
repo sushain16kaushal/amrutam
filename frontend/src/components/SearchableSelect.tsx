@@ -11,15 +11,29 @@ type Props = {
   disabled?: boolean;
 };
 
+// Matching substring ko bold highlight karta hai — jaise e-commerce search-suggestions mein hota hai
+function HighlightedLabel({ label, query }: { label: string; query: string }) {
+  if (!query) return <>{label}</>;
+  const idx = label.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{label}</>;
+  return (
+    <>
+      {label.slice(0, idx)}
+      <span className="font-semibold text-sky-700">{label.slice(idx, idx + query.length)}</span>
+      {label.slice(idx + query.length)}
+    </>
+  );
+}
+
 export default function SearchableSelect({ options, value, onChange, placeholder, disabled }: Props) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0); // keyboard-navigation ke liye currently-highlighted item
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Selected option ka label dikhana hai jab dropdown band ho
   const selectedLabel = options.find((o) => o.value === value)?.label || '';
 
-  // Bahar click karne pe dropdown band ho jaaye
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -35,6 +49,48 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : options;
 
+  // Jab bhi filtered-list badle (naya query type hua), activeIndex reset karo top pe
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query, isOpen]);
+
+  // Active item ko scroll-into-view karo jab keyboard se navigate ho
+  useEffect(() => {
+    if (!isOpen || !listRef.current) return;
+    const activeEl = listRef.current.children[activeIndex] as HTMLElement | undefined;
+    activeEl?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, isOpen]);
+
+  function selectOption(option: Option) {
+    onChange(option.value);
+    setIsOpen(false);
+    setQuery('');
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+        setQuery('');
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[activeIndex]) selectOption(filtered[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setQuery('');
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <input
@@ -44,25 +100,23 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         value={isOpen ? query : selectedLabel}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => { setIsOpen(true); setQuery(''); }}
+        onKeyDown={handleKeyDown}
         className="input-field w-full"
         autoComplete="off"
       />
       {isOpen && (
-        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <ul ref={listRef} className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-400">No matches found</li>
           ) : (
-            filtered.map((o) => (
+            filtered.map((o, i) => (
               <li
                 key={o.value}
-                onClick={() => {
-                  onChange(o.value);
-                  setIsOpen(false);
-                  setQuery('');
-                }}
-                className="cursor-pointer px-3 py-2 text-sm hover:bg-sky-50"
+                onMouseEnter={() => setActiveIndex(i)}
+                onClick={() => selectOption(o)}
+                className={`cursor-pointer px-3 py-2 text-sm ${i === activeIndex ? 'bg-sky-50' : 'hover:bg-sky-50'}`}
               >
-                {o.label}
+                <HighlightedLabel label={o.label} query={query} />
               </li>
             ))
           )}
