@@ -41,6 +41,9 @@
   "directories": {
     "test": "tests"
   },
+  "overrides": {
+    "sharp": "^0.33.5"
+  },
   "scripts": {
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --forceExit",
     "migrate:up": "node-pg-migrate up",
