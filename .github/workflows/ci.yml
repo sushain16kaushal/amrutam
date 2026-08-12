@@ -40,6 +40,14 @@ jobs:
       RESEND_API_KEY: re_ci_test_dummy_key_not_for_production
       GROQ_API_KEY: gsk_ci_test_dummy_key_not_for_production
       NODE_ENV: test
+      # npm ke apne network fetches (registry tarball download) ke liye retry/timeout —
+      # `npm ci` step ke apne bash-level retry loop se alag hai (woh sharp jaisे
+      # postinstall scripts ke direct GitHub download failures cover karta hai, yeh wala
+      # npm ke registry-level fetches cover karta hai).
+      npm_config_fetch_retries: 5
+      npm_config_fetch_retry_mintimeout: 20000
+      npm_config_fetch_retry_maxtimeout: 120000
+      npm_config_fetch_timeout: 300000
 
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +59,23 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        # `sharp` (via @xenova/transformers) apna libvips binary GitHub Releases se
+        # postinstall step mein download karta hai — yeh npm ke apne retry config se
+        # cover nahi hota aur runner network par kabhi-kabhi "socket hang up" de deta hai.
+        # Isliye poore `npm ci` ko khud retry karte hain (fresh state ke liye beech mein
+        # node_modules clean karke), taaki transient flake CI ko red na kare.
+        run: |
+          for attempt in 1 2 3; do
+            echo "npm ci attempt $attempt"
+            if npm ci; then
+              exit 0
+            fi
+            echo "npm ci failed on attempt $attempt, retrying..."
+            rm -rf node_modules
+            sleep $((attempt * 10))
+          done
+          echo "npm ci failed after 3 attempts"
+          exit 1
 
       - name: Run migrations
         run: npm run migrate:up
