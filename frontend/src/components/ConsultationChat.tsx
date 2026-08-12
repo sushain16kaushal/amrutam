@@ -163,7 +163,7 @@ const [remaining, setRemaining] = useState<number | null>(null);
   };
 
   return (
-    <div className="bg-slate-50 flex flex-col h-125 w-full">
+    <div className="bg-slate-50 flex flex-col h-[500px] w-full">
       {/* Escalation Banners */}
       {escalation && escalation.type === 'emergency' && (
         <div className="shrink-0 bg-red-50 border-b border-red-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
