@@ -5,14 +5,10 @@ import { assembleLlmRequest } from '../ai-agents/promptAssembly.service.js';
 import { generateAiDoctorResponse } from '../ai-agents/llmClient.service.js';
 import { detectEscalation } from '../ai-agents/escalationDetection.service.js';
 import { createEscalationTicket } from '../escalation/escalation.repository.js';
-import { findNearbyCare } from '../care/nearbyCare.service.js';
-import * as usersRepo from '../users/users.repository.js';
-import { moderateAndCreateMessage, isConsultationLocked } from '../moderation/moderation.service.js'; // NEW
+import { moderateAndCreateMessage, isConsultationLocked } from '../moderation/moderation.service.js';
 const mapSenderKindToRole = (senderKind) => (senderKind === 'ai_doctor' ? 'assistant' : 'user');
 
 export const generateAndSaveAiReply = async ({ consultationId, patientMessage }) => {
-  // NEW — agar chat pehle se hi severe-content ki wajah se locked hai (pending_review),
-  // AI-doctor ko reply generate hi nahi karna chahiye
   const locked = await isConsultationLocked(consultationId);
   if (locked) {
     return { message: null, escalation: null };
@@ -35,8 +31,6 @@ export const generateAndSaveAiReply = async ({ consultationId, patientMessage })
   const llmRequest = assembleLlmRequest({ personaConfig, retrievedChunks, chatHistory, message: patientMessage });
   const responseText = await generateAiDoctorResponse(llmRequest);
 
-  // CHANGED — direct messagesRepo.createMessage() ki jagah ab moderation wrapper se
-  // (AI ka apna response bhi classify hota hai — jailbreak/edge-case-persona-drift ke against safety-net)
   const { message: savedMessage } = await moderateAndCreateMessage({
     consultationId,
     senderId: doctorUserId,
@@ -45,13 +39,16 @@ export const generateAndSaveAiReply = async ({ consultationId, patientMessage })
     content: responseText
   });
 
+  // CHANGED — ab sirf 'urgent' severity real-time handle hoti hai. 'Moderate' concept
+  // hata diya gaya hai per-message flow se — uska poora context ab consultation-end
+  // pe generate hone waali comprehensive health report mein capture hoga
+  // (dekho: finalReport.service.js -> generateAndSaveFinalReport).
   let escalation = null;
   const safetyFlags = personaConfig?.safety_flags || [];
 
   if (safetyFlags.length > 0) {
     const detection = await detectEscalation({ patientMessage, specialty, safetyFlags });
-    if (detection.escalate) {
-      // Silent audit-log — dono severities ke liye, koi admin-dashboard-workflow attach nahi
+    if (detection.escalate && detection.severity === 'urgent') {
       const ticket = await createEscalationTicket({
         consultationId,
         patientId,
@@ -60,36 +57,17 @@ export const generateAndSaveAiReply = async ({ consultationId, patientMessage })
         severity: detection.severity
       });
 
-      if (detection.severity === 'urgent') {
-        escalation = {
-          type: 'emergency',
-          ticketId: ticket.id,
-          severity: detection.severity,
-          reason: detection.reason
-        };
-      } else {
-        let clinics = [];
-        try {
-          const patientProfile = await usersRepo.findProfileWithUserByUserId(patientId);
-          if (patientProfile?.latitude && patientProfile?.longitude) {
-            clinics = await findNearbyCare({
-              latitude: patientProfile.latitude,
-              longitude: patientProfile.longitude
-            });
-          }
-        } catch {
-          // nearby-care lookup fail ho jaye toh bhi chat block nahi honi chahiye
-        }
-        escalation = {
-          type: 'nearby_care',
-          ticketId: ticket.id,
-          severity: detection.severity,
-          reason: detection.reason,
-          clinics
-        };
-      }
+      escalation = {
+        type: 'emergency',
+        ticketId: ticket.id,
+        severity: detection.severity,
+        reason: detection.reason
+      };
     }
+    // 'moderate' (ya koi bhi non-urgent escalate) — jaan-boojh kar yahan kuch nahi karte.
+    // Na ticket, na banner. Yeh sab final consultation report mein cover hoga.
   }
 
   return { message: savedMessage, escalation };
 };
+

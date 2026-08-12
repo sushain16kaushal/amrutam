@@ -96,3 +96,27 @@ export const findExpiredActiveConsultations = async () => {
   );
   return result.rows;
 };
+
+// NEW — consultation-end pe generate hui health report yahan save hoti hai
+export const saveHealthReport = async (consultationId, reportJson, clinicsJson) => {
+  const result = await pool.query(
+    `UPDATE consultations
+     SET health_report_json = $1,
+         health_report_clinics = $2,
+         health_report_generated_at = now()
+     WHERE id = $3
+     RETURNING *`,
+    [reportJson, clinicsJson, consultationId]
+  );
+  return result.rows[0];
+};
+
+// NEW — patient/doctor apni consultation ki final report fetch kar sake, isliye
+export const findHealthReportByConsultationId = async (consultationId) => {
+  const result = await pool.query(
+    `SELECT health_report_json, health_report_clinics, health_report_generated_at
+     FROM consultations WHERE id = $1`,
+    [consultationId]
+  );
+  return result.rows[0] || null;
+};

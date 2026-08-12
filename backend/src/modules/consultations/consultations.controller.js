@@ -21,6 +21,15 @@ export const getOne = async (req, res) => {
     success(res, result);
   } catch (err) { error(res, err); }
 };
+
+// NEW — patient/doctor apni consultation ki final health report fetch kar sake
+export const getHealthReport = async (req, res) => {
+  try {
+    const result = await consultService.getHealthReport(req.user.id, req.params.id);
+    success(res, result);
+  } catch (err) { error(res, err); }
+};
+
 export const getMine = async (req, res) => {
   try {
     const consultations = await consultService.getMyConsultations(req.user.id);

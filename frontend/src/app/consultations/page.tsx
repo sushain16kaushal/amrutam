@@ -7,6 +7,7 @@ import { apiCall } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { MyConsultation, Prescription } from '@/types';
 import ConsultationChat from '@/components/ConsultationChat';
+import HealthReportPanel from '@/components/HealthReportPanel';
 
 type PageState = 'loading' | 'ready' | 'error';
 
@@ -20,6 +21,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 const CANCELLABLE_STATUSES = ['pending', 'confirmed'];
 const CHATTABLE_STATUSES = ['confirmed', 'in_progress', 'completed']; // completed add kiya — read-only view allowed
+const REPORT_STATUSES = ['completed', 'cancelled']; // in dono terminal states mein health report generate hoti hai
 
 export default function ConsultationsPage() {
   const [now, setNow] = useState(() => new Date());
@@ -38,6 +40,7 @@ useEffect(() => {
   const [prescriptions, setPrescriptions] = useState<Record<string, Prescription[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loadingPrescriptionId, setLoadingPrescriptionId] = useState<string | null>(null);
+  const [reportOpenId, setReportOpenId] = useState<string | null>(null); // NEW — kiska health report khula hai
 
   const [chatOpenId, setChatOpenId] = useState<string | null>(null); // NEW — kis consultation ka chat khula hai
   const [reviewOpenId, setReviewOpenId] = useState<string | null>(null);
@@ -235,6 +238,8 @@ const handleSubmitRefund = async (consultationId: string) => {
             const slotStart = new Date(c.start_time);
             const canChat = CHATTABLE_STATUSES.includes(c.status); // NEW
             const chatNotYetOpen = c.status !== 'completed' && now < slotStart;
+            const canViewReport = REPORT_STATUSES.includes(c.status); // NEW
+            const isReportOpen = reportOpenId === c.id;
             
             return (
               <div key={c.id} className="card overflow-hidden">
@@ -326,6 +331,15 @@ const handleSubmitRefund = async (consultationId: string) => {
                     </button>
                   )}
 
+                  {canViewReport && (
+                    <button
+                      onClick={() => setReportOpenId(isReportOpen ? null : c.id)}
+                      className="text-sm font-semibold text-teal-600 hover:text-teal-700 hover:bg-teal-50 px-4 py-2 rounded-lg transition-colors border border-transparent hover:border-teal-100"
+                    >
+                      {isReportOpen ? 'Hide Health Report' : 'View Health Report'}
+                    </button>
+                  )}
+
                   {canCancel && (
                     <button
                       onClick={() => handleCancel(c.id)}
@@ -364,6 +378,16 @@ const handleSubmitRefund = async (consultationId: string) => {
                     ) : (
                       <p className="text-sm text-slate-500 italic">No prescription has been issued yet for this consultation.</p>
                     )}
+                  </div>
+                )}
+
+                {/* Health Report Section */}
+                {isReportOpen && token && (
+                  <div className="mt-4 p-5 bg-teal-50/50 rounded-xl border border-teal-100 animate-fade-in">
+                    <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <span>🩺</span> AI Health Report
+                    </h4>
+                    <HealthReportPanel consultationId={c.id} token={token} />
                   </div>
                 )}
 

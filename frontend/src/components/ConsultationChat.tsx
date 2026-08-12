@@ -46,12 +46,14 @@ function ChatImage({ consultationId, filename, token }: { consultationId: string
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt="Shared photo" className="max-w-50 rounded mt-1" />;
 }
+// Sirf 'emergency' ab real-time banner ke through aata hai — moderate/nearby_care
+// consultation ke doraan disrupt nahi karta, uski jagah ab consultation-end health
+// report mein clinics ke saath aati hai (dekho HealthReportPanel).
 type Escalation = {
-  type: 'emergency' | 'nearby_care';
+  type: 'emergency';
   ticketId: string;
   severity: string;
   reason: string;
-  clinics?: { name: string; type?: string; distanceKm: number; directionsUrl: string }[];
 };
 
 export default function ConsultationChat({ consultationId, token,status,endTime }: { consultationId: string; token: string ; status?: string; endTime?: string }) {
@@ -178,45 +180,6 @@ const [remaining, setRemaining] = useState<number | null>(null);
           >
             📞 Call 108
           </a>
-        </div>
-      )}
-
-      {escalation && escalation.type === 'nearby_care' && (
-        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-3 shadow-inner">
-          <div className="text-sm text-amber-900 mb-3 leading-snug flex items-start gap-3">
-            <span className="text-2xl">🏥</span>
-            <div>
-              <strong className="block text-amber-950 font-bold mb-0.5">In-Person Checkup Recommended</strong>
-              Based on your symptoms, we suggest visiting a clinic. Here are nearby options:
-            </div>
-          </div>
-          {escalation.clinics && escalation.clinics.length > 0 ? (
-            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar ml-9">
-              {escalation.clinics.map((c, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between gap-3 bg-white border border-amber-100 rounded-lg px-4 py-2.5 text-sm shadow-sm hover:border-amber-300 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="font-bold text-slate-800 truncate">{c.name}</div>
-                    <div className="text-amber-600 font-medium text-xs mt-0.5">{c.distanceKm} km away</div>
-                  </div>
-                  <a
-                    href={c.directionsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-md text-xs font-bold hover:bg-amber-200 transition-colors"
-                  >
-                    Directions →
-                  </a>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-amber-700 ml-9 italic">
-              We couldn&apos;t find nearby options automatically — please consult an in-person doctor soon.
-            </p>
-          )}
         </div>
       )}
 

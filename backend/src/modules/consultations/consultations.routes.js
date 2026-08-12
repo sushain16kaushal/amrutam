@@ -10,6 +10,7 @@ const router = express.Router();
 router.get('/mine', authenticate, consultController.getMine); // NEW — sabse upar, /:id se pehle
 router.get('/assigned', authenticate, consultController.getAssigned); // NEW — sabse upar, /:id se pehle
 router.get('/:id', authenticate, consultController.getOne);
+router.get('/:id/report', authenticate, consultController.getHealthReport); // NEW — final health report fetch
 router.post('/:id/cancel', authenticate, consultController.cancel);
 router.patch('/:id/status', authenticate, validate(updateStatusSchema), consultController.updateStatus);
 router.patch('/:id/hide', authenticate, consultController.hideConsultation);

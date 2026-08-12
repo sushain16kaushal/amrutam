@@ -6,14 +6,15 @@ export const createEscalationTicket = async ({
   specialty,
   triggerReason,
   severity,
-  imageMessageId = null
+  imageMessageId = null,
+  reportJson = null // NEW — moderate-severity cases ke liye structured health report
 }) => {
   const result = await pool.query(
     `INSERT INTO escalation_tickets
-       (consultation_id, patient_id, specialty, trigger_reason, severity, image_message_id, status)
-     VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+       (consultation_id, patient_id, specialty, trigger_reason, severity, image_message_id, report_json, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
      RETURNING *`,
-    [consultationId, patientId, specialty, triggerReason, severity, imageMessageId]
+    [consultationId, patientId, specialty, triggerReason, severity, imageMessageId, reportJson]
   );
   return result.rows[0];
 };
@@ -28,6 +29,12 @@ export const listPendingTickets = async () => {
      ORDER BY et.created_at ASC`
   );
   return result.rows;
+};
+
+// NEW — patient apni saved report baad mein reference ke liye dekh sake
+export const findTicketById = async (ticketId) => {
+  const result = await pool.query(`SELECT * FROM escalation_tickets WHERE id = $1`, [ticketId]);
+  return result.rows[0];
 };
 
 export const updateTicketStatus = async (ticketId, status) => {

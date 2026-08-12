@@ -83,6 +83,29 @@ export type DoctorReviewsData = {
   totalReviews: number;
 };
 
+export type HealthReportClinic = {
+  name: string;
+  type?: string;
+  distanceKm: number;
+  directionsUrl: string;
+};
+
+export type HealthReport = {
+  chiefComplaint: string;
+  symptomsSummary: string;
+  duration: string;
+  specialty: string;
+  recommendedAction: string;
+};
+
+export type HealthReportResponse = {
+  status: string;
+  reportAvailable: boolean;
+  report: HealthReport | null;
+  clinics: HealthReportClinic[];
+  generatedAt: string | null;
+};
+
 export type RefundRequest = {
   id: string;
   consultation_id: string;
