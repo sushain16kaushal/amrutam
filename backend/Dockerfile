@@ -1,24 +1,21 @@
 FROM node:20-slim AS base
 WORKDIR /app
+# sharp (via @xenova/transformers) normally downloads a prebuilt libvips binary
+# from GitHub Releases during npm install. That download is unreachable/unstable
+# from this build environment ("socket hang up", even after retries) — so instead
+# we install libvips from apt here. When sharp's install script finds a system
+# libvips via pkg-config, it links against that and skips the GitHub download
+# entirely (see https://sharp.pixelplumbing.com/install#custom-libvips).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libvips-dev \
+      build-essential \
+      python3 \
+      pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps
 COPY package*.json ./
-# sharp (via @xenova/transformers) postinstall step downloads its libvips binary
-# directly from GitHub Releases, which occasionally drops mid-download ("socket
-# hang up") on CI/build runners. npm's own fetch-retry config doesn't cover this
-# script step, so retry the whole install a few times before giving up.
-ENV npm_config_fetch_retries=5
-ENV npm_config_fetch_retry_mintimeout=20000
-ENV npm_config_fetch_retry_maxtimeout=120000
-RUN for attempt in 1 2 3; do \
-      echo "npm ci attempt $attempt"; \
-      npm ci --omit=dev && exit 0; \
-      echo "npm ci failed on attempt $attempt, retrying..."; \
-      rm -rf node_modules; \
-      sleep $((attempt * 10)); \
-    done; \
-    echo "npm ci failed after 3 attempts"; \
-    exit 1
+RUN npm ci --omit=dev
 
 FROM base AS runner
 ENV NODE_ENV=production

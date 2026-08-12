@@ -58,12 +58,18 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      - name: Install libvips (avoids sharp's GitHub binary download)
+        # sharp (via @xenova/transformers) normally fetches a prebuilt libvips
+        # binary from GitHub Releases during npm install, which has been failing
+        # with "socket hang up" even across retries. Installing libvips from apt
+        # lets sharp link against the system library instead and skip that
+        # download entirely (see https://sharp.pixelplumbing.com/install#custom-libvips).
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-dev
+
       - name: Install dependencies
-        # `sharp` (via @xenova/transformers) apna libvips binary GitHub Releases se
-        # postinstall step mein download karta hai — yeh npm ke apne retry config se
-        # cover nahi hota aur runner network par kabhi-kabhi "socket hang up" de deta hai.
-        # Isliye poore `npm ci` ko khud retry karte hain (fresh state ke liye beech mein
-        # node_modules clean karke), taaki transient flake CI ko red na kare.
+        # Kept as a fallback safety net in case some other transient npm registry
+        # flake shows up — the libvips install above should already prevent the
+        # sharp-specific GitHub download failure.
         run: |
           for attempt in 1 2 3; do
             echo "npm ci attempt $attempt"
