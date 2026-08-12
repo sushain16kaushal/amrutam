@@ -41,12 +41,27 @@ const buildSafetyNote = (safetyFlags = []) => {
   );
 };
 
+// NEW — universal intake instruction, applies to every persona/specialty regardless of
+// their individual system_prompt. Isse pehle AI turant ek hi message par poora generic-advice
+// paragraph de deta tha (jaise real doctor kabhi nahi karta). Ab pehle relevant clinical
+// follow-up questions puchna mandatory hai — jab tak enough context na mil jaaye, ya patient
+// khud clearly bol de ki unhe seedha guidance chahiye.
+const DOCTOR_STYLE_INTAKE_INSTRUCTION = [
+  'Behave like a real doctor conducting an in-chat intake, not like a general knowledge assistant:',
+  '- When the patient first describes a symptom or concern, do NOT immediately dump general advice, home remedies, or a list of warning signs. Instead, ask 1-3 focused, relevant follow-up questions first — the kind a doctor would ask during history-taking (onset and duration, severity, associated symptoms, what makes it better or worse, relevant medical history, medications already tried, etc.). Keep these questions short and specific to what the patient has said, not a generic checklist.',
+  '- Ask only what is clinically relevant to their specific complaint — do not interrogate with unrelated questions.',
+  '- Once you have gathered enough detail across the conversation (or the patient explicitly asks for advice / says they cannot provide more detail), THEN give clear, general, educational guidance grounded in what they told you.',
+  '- If the patient has already provided rich detail in their first message (duration, severity, associated symptoms already covered), you may skip straight to guidance — but still ask about any clearly missing detail that would change your advice.',
+  '- This applies regardless of specialty. Safety-critical escalation rules (below, if any) always take priority over this intake flow — if something needs urgent care, say so immediately rather than continuing to ask routine questions.'
+].join('\n');
+
 export const buildSystemPrompt = ({ personaConfig, retrievedChunks }) => {
   const { system_prompt, tone, disclaimer_text, safety_flags = [] } = personaConfig;
 
   const sections = [
     system_prompt,
     tone ? `Tone: ${tone}.` : null,
+    DOCTOR_STYLE_INTAKE_INSTRUCTION,
     buildContextSection(retrievedChunks),
     buildSafetyNote(safety_flags),
     disclaimer_text
