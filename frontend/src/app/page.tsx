@@ -36,7 +36,7 @@ export default function Home() {
       {/* Features Section */}
       <section className="py-24 bg-slate-50 relative -mt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="card text-center hover:-translate-y-2 group">
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl group-hover:scale-110 transition-transform">
                 🤖
@@ -54,6 +54,16 @@ export default function Home() {
               <h3 className="text-xl font-bold text-slate-900 mb-3">Top Specialists</h3>
               <p className="text-slate-600 leading-relaxed">
                 Connect with verified human doctors across 10+ specialties through secure real-time chat and prescriptions.
+              </p>
+            </div>
+
+            <div className="card text-center hover:-translate-y-2 group">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl group-hover:scale-110 transition-transform">
+                📋
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Your Health Report</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Every AI consultation ends with a structured health report — your symptoms, summary, and next steps, ready to share with any doctor.
               </p>
             </div>
             
