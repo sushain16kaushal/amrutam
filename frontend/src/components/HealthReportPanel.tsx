@@ -20,14 +20,19 @@ export default function HealthReportPanel({ consultationId, token }: { consultat
     let timer: ReturnType<typeof setTimeout>;
 
     const fetchReport = async () => {
-      const result = await apiCall<HealthReportResponse>(`/consultations/${consultationId}/report`, { token });
+      // CHANGED — backend success() helper response ko { success, data: {...} } mein
+      // wrap karta hai, isliye generic type aur unwrapping dono fix ki hai (pehle
+      // seedha HealthReportResponse maan liya tha, jo galat tha — isi wajah se
+      // reportAvailable hamesha undefined aata tha, chahe backend mein sahi report ho).
+      const result = await apiCall<{ data: HealthReportResponse }>(`/consultations/${consultationId}/report`, { token });
       if (!mounted) return;
 
       if (result.status === 200) {
-        setData(result.data);
+        const reportData = result.data.data;
+        setData(reportData);
         setError(false);
 
-        if (!result.data.reportAvailable && pollCountRef.current < MAX_POLLS) {
+        if (!reportData.reportAvailable && pollCountRef.current < MAX_POLLS) {
           pollCountRef.current += 1;
           timer = setTimeout(fetchReport, POLL_INTERVAL_MS);
           return; // loading true rehne do jab tak poll chal raha hai
