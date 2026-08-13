@@ -64,7 +64,7 @@ export default function ConsultationChat({ consultationId, token,status,endTime 
   const [escalation, setEscalation] = useState<Escalation | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const currentUserId = decodeUserId(token);
   const [autoCompleted, setAutoCompleted] = useState(false);
 const [remaining, setRemaining] = useState<number | null>(null);
@@ -108,7 +108,12 @@ const [remaining, setRemaining] = useState<number | null>(null);
   }, [consultationId, token]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -204,7 +209,7 @@ const [remaining, setRemaining] = useState<number | null>(null);
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/50 custom-scrollbar">
+      <div ref={chatContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/50 custom-scrollbar">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-3 opacity-50">
             <span className="text-4xl">👋</span>
@@ -240,7 +245,6 @@ const [remaining, setRemaining] = useState<number | null>(null);
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input Area */}

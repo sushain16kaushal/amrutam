@@ -27,7 +27,18 @@ export const getHealthReport = async (req, res) => {
   try {
     const result = await consultService.getHealthReport(req.user.id, req.params.id);
     success(res, result);
-  } catch (err) { error(res, err); }
+  } catch (err) {
+    // TEMP DEBUG — Render logs mein confusion ho rahi thi, isliye error ka
+    // poora detail seedha response body mein bhej rahe hain. Debugging ke
+    // baad yeh block hata ke wapas `error(res, err);` kar dena.
+    console.error('[REPORT DEBUG]', err);
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.message,
+      name: err.name,
+      stack: err.stack
+    });
+  }
 };
 
 export const getMine = async (req, res) => {
