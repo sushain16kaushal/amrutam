@@ -12,7 +12,8 @@ const processNotification = async (job) => {
 
 export const notificationWorker = new Worker('notifications', processNotification, {
   connection: redis.options,
-  concurrency: 5 // 5 notifications process ho sakti hain parallel
+  concurrency: 5, // 5 notifications process ho sakti hain parallel
+  drainDelay: 30 // 5s ki jagah 30s — 6x kam polling
 });
 
 notificationWorker.on('failed', (job, err) => {
